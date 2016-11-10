@@ -19,9 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{6BA7409C-7833-41E6-8E61-8AE62ABE5DE7}</ProjectGuid>
+    <ProjectGuid>{AAA5B418-BBA0-4E63-8EC8-D3860A63CF3F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>My104021219_ser</RootNamespace>
+    <RootNamespace>My104021219_cli</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -142,7 +142,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="104021219_ser.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
