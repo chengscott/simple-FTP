@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
 		MY_ERROR("Winsock Error\n");
 	}
 	// (address, type, protocol)
-	serverSocket = socket(PF_INET, SOCK_STREAM, 0);   
+	serverSocket = socket(PF_INET, SOCK_STREAM, 0);
 	// assign server address
 	memset(&serverAddress, 0, sizeof(serverAddress));
 	serverAddress.sin_family = AF_INET;
@@ -49,73 +49,83 @@ int main(int argc, char** argv) {
 		MY_ERROR("Error: Binding failed.\n");
 	}
 	// client limits
-	if (listen(serverSocket, 3) < 0) {
-		MY_ERROR("Error: Exceed maximum 3 connections.\n");
+	if (listen(serverSocket, 1) < 0) {
+		MY_ERROR("Error: Exceed maximum 1 connection.\n");
 	}
 	// listening
+	printf("Listening...\n");
 	while (1) {
-		printf("Listening...\n");
 		clientAddressLen = sizeof(clientAddress);
 		clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddress, &clientAddressLen);
-		printf("Connection from: %s \n", inet_ntoa(clientAddress.sin_addr));
 		// receive
-		while ((bytesRead = recv(clientSocket, buf, MAX_SIZE, 0)) > 0) {
-			buf[bytesRead] = '\0';
-			int bufSize = strlen(buf);
-			if (bufSize >= 5 && buf[0] == 'p' && buf[1] == 'u' && buf[2] == 't') {
-				char filename[MAX_SIZE];
-				memcpy(filename, &buf[4], bufSize - 4);
-				FILE* fptr = fopen(filename, "wb");
-				do {
-					bytesRead = recv(serverSocket, buf, MAX_SIZE, 0);
-					fwrite(buf, MAX_SIZE, bytesRead, fptr);
-				} while (buf[bytesRead - 1] != '\0');
-				fclose(fptr);
-			} else if (!strncmp(buf, "get", strlen("get"))) {
-
-			} else if (!strncmp(buf, "dir", strlen("dir"))) {
-				char info[100000] = " Directory of ./upload\n\n";
-				DIR *dir = opendir("."); // upload
-				struct dirent *entry;
-				struct stat file;
-				int totalFile = 0, totalDir = 0;
-				long long totalFileSize = 0;
-				while ((entry = readdir(dir)) != NULL) {
-					char tmp[1000];
-					if (entry->d_type == DT_DIR) {
-						++totalDir;
-						sprintf(tmp, "    <DIR>\t\t\t %s\n",
-							//ctime(&file.st_mtime),
-							entry->d_name
-						);
-					} else {
-						++totalFile;
-						long fileSize = 0;// file.st_size;
-						totalFileSize += fileSize;
-						sprintf(tmp, "         \t %s\n",
-							//ctime(&file.st_mtime),
-							//fileSize,
-							entry->d_name
-						);
-					}
-					strcat(info, tmp);
+		bytesRead = recv(clientSocket, buf, MAX_SIZE, 0);
+		if (bytesRead >= 5 && buf[0] == 'p' && buf[1] == 'u' && buf[2] == 't') {
+			char filename[MAX_SIZE];
+			strcpy(filename, &buf[4]);
+			FILE* fptr = fopen(filename, "wb");
+			// TODO: warning cover, filesize, timing
+			int fileLen = strlen(filename);
+			memmove(buf, buf + 5 + fileLen, bytesRead);
+			fwrite(buf, 1, bytesRead - 5 - fileLen, fptr);
+			while (1) {
+				memset(buf, 0, MAX_SIZE);
+				bytesRead = recv(clientSocket, buf, MAX_SIZE, 0);
+				if (bytesRead > 0) {
+					fwrite(buf, 1, bytesRead, fptr);
 				}
-				closedir(dir);
-				char tmp[1000];
-				sprintf(tmp, "\t\t%d File(s)\t%lld bytes\n\t\t%d Dir(s)\n\n",
-					totalFile,
-					totalFileSize,
-					totalDir
-				);
-				strcat(info, tmp);
-				// TODO: >1024
-				send(clientSocket, info, strlen(info), 0);
-				// recv(clientSocket, buf, MAX_SIZE, 0);
-			} else if (!strncmp(buf, "rename", strlen("rename"))) {
-
-			} else {
-				// respond ERROR
+				else break;
 			}
+			fclose(fptr);
+			printf("[%s] put %s success.\n", inet_ntoa(clientAddress.sin_addr), filename);
+		}
+		else if (bytesRead >= 5 && buf[0] == 'g' && buf[1] == 'e' && buf[2] == 't') {
+
+		}
+		else if (!strncmp(buf, "dir", strlen("dir"))) {
+			char info[100000] = " Directory of ./upload\n\n";
+			DIR *dir = opendir("."); // upload
+			struct dirent *entry;
+			struct stat file;
+			int totalFile = 0, totalDir = 0;
+			long long totalFileSize = 0;
+			while ((entry = readdir(dir)) != NULL) {
+				char tmp[1000];
+				if (entry->d_type == DT_DIR) {
+					++totalDir;
+					sprintf(tmp, "    <DIR>\t\t\t %s\n",
+						//ctime(&file.st_mtime),
+						entry->d_name
+					);
+				}
+				else {
+					++totalFile;
+					long fileSize = 0;// file.st_size;
+					totalFileSize += fileSize;
+					sprintf(tmp, "         \t %s\n",
+						//ctime(&file.st_mtime),
+						//fileSize,
+						entry->d_name
+					);
+				}
+				strcat(info, tmp);
+			}
+			closedir(dir);
+			char tmp[1000];
+			sprintf(tmp, "\t\t%d File(s)\t%lld bytes\n\t\t%d Dir(s)\n\n",
+				totalFile,
+				totalFileSize,
+				totalDir
+			);
+			strcat(info, tmp);
+			// TODO: >1024
+			send(clientSocket, info, strlen(info), 0);
+			// recv(clientSocket, buf, MAX_SIZE, 0);
+		}
+		else if (bytesRead == 6 && strcmp(buf, "rename") == 0) {
+
+		}
+		else {
+			// respond ERROR
 		}
 		closesocket(clientSocket);
 	}
