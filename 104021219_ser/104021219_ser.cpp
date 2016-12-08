@@ -2,12 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-// file
-#include <dirent.h>
 #include <direct.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <time.h>
 #pragma comment(lib, "Ws2_32.lib")
 
 #define MAX_SIZE 1024
@@ -98,51 +93,59 @@ int main(int argc, char** argv) {
 				printf("[%s] get %s success.\n", inet_ntoa(clientAddress.sin_addr), filename);
 			}
 		}
-		else if (!strncmp(buf, "dir", strlen("dir"))) {
-			char info[100000] = " Directory of ./upload\n\n";
-			DIR *dir = opendir("."); // upload
-			struct dirent *entry;
-			struct stat file;
-			int totalFile = 0, totalDir = 0;
-			long long totalFileSize = 0;
-			while ((entry = readdir(dir)) != NULL) {
-				char tmp[1000];
-				if (entry->d_type == DT_DIR) {
-					++totalDir;
-					sprintf(tmp, "    <DIR>\t\t\t %s\n",
-						//ctime(&file.st_mtime),
-						entry->d_name
-					);
-				}
-				else {
-					++totalFile;
-					long fileSize = 0;// file.st_size;
-					totalFileSize += fileSize;
-					sprintf(tmp, "         \t %s\n",
-						//ctime(&file.st_mtime),
-						//fileSize,
-						entry->d_name
-					);
-				}
-				strcat(info, tmp);
+		else if (bytesRead == 3 && buf[0] == 'd' && buf[1] == 'i' && buf[2] == 'r') {
+			_chdir("..");
+			system("dir upload>GBY.txt");
+			FILE* fptr = fopen("GBY.txt", "rb");
+			while ((bytesRead = fread(buf, 1, MAX_SIZE, fptr)) > 0) {
+				send(clientSocket, buf, bytesRead, 0);
+				memset(buf, 0, MAX_SIZE);
 			}
-			closedir(dir);
-			char tmp[1000];
-			sprintf(tmp, "\t\t%d File(s)\t%lld bytes\n\t\t%d Dir(s)\n\n",
-				totalFile,
-				totalFileSize,
-				totalDir
-			);
-			strcat(info, tmp);
-			// TODO: >1024
-			send(clientSocket, info, strlen(info), 0);
-			// recv(clientSocket, buf, MAX_SIZE, 0);
+			fclose(fptr);
+			system("del GBY.txt");
+			printf("[%s] dir success.\n", inet_ntoa(clientAddress.sin_addr));
+			_chdir("upload");
 		}
-		else if (bytesRead == 6 && strcmp(buf, "rename") == 0) {
-
+		else if (
+			bytesRead >= 8 &&
+			buf[0] == 'r' &&
+			buf[1] == 'e' &&
+			buf[2] == 'n' &&
+			buf[3] == 'a' &&
+			buf[4] == 'm' &&
+			buf[5] == 'e'
+		) {
+			buf[bytesRead] = '\0';
+			int valid = 1;
+			strtok(buf, " ");
+			char* filename1 = strtok(NULL, " "), *filename2 = NULL;
+			if (filename1 == NULL) valid = 0;
+			if (valid) filename2 = strtok(NULL, " ");
+			if (filename2 == NULL) valid = 0;
+			char ret[100];
+			if (!valid) strcpy(ret, " command");
+			FILE* fptr = fopen(filename1, "rb");
+			if (fptr == NULL) valid = 0;
+			else fclose(fptr);
+			fptr = fopen(filename2, "rb");
+			if (fptr != NULL) {
+				valid = 0;
+				fclose(fptr);
+			}
+			if (!valid) strcpy(ret, " file");
+			if (valid) {
+				char cmd[MAX_SIZE];
+				sprintf(cmd, "ren %s %s", filename1, filename2);
+				system(cmd);
+				send(clientSocket, "G8", 2, 0);
+				printf("[%s] rename success.\n", inet_ntoa(clientAddress.sin_addr));
+			}
+			else {
+				send(clientSocket, ret, sizeof(ret), 0);
+			}
 		}
 		else {
-			// respond ERROR
+			send(clientSocket, "Invalid: command", 17, 0);
 		}
 		closesocket(clientSocket);
 	}

@@ -105,10 +105,37 @@ int main(int argc, char** argv) {
 			_chdir("..");
 		} else if (bufSize == 3 && buf[0] == 'd' && buf[1] == 'i' && buf[2] == 'r') {
 			send(serverSocket, "dir", 3, 0);
-			// TODO: read size
-			bytesRead = recv(serverSocket, buf, MAX_SIZE, 0);
-			buf[bytesRead] = '\0';
-			printf("%s\n", buf);
+			FILE* fptr;
+			fptr = fopen("GBY.txt", "wb");
+			while ((bytesRead = recv(serverSocket, buf, MAX_SIZE, 0)) > 0) {
+				fwrite(buf, 1, bytesRead, fptr);
+				memset(buf, 0, MAX_SIZE);
+			}
+			fclose(fptr);
+			fptr = fopen("GBY.txt", "r");
+			char c;
+			while ((c = getc(fptr)) != EOF) putchar(c);
+			fclose(fptr);
+			system("del GBY.txt");
+		}
+		else if (
+			bufSize >= 8 &&
+			buf[0] == 'r' &&
+			buf[1] == 'e' &&
+			buf[2] == 'n' &&
+			buf[3] == 'a' &&
+			buf[4] == 'm' &&
+			buf[5] == 'e'
+		) {
+			send(serverSocket, buf, bufSize, 0);
+			char GBY[MAX_SIZE];
+			bytesRead = recv(serverSocket, GBY, MAX_SIZE, 0);
+			if (bytesRead == 2 && GBY[0] == 'G' && GBY[1] == '8')
+				printf("%s success.\n", buf);
+			else printf("Invalid: %s.\n", buf);
+		}
+		else {
+			printf("Invalid: command");
 		}
 		closesocket(serverSocket);
 		memset(buf, 0, MAX_SIZE);
