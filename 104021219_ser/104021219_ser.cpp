@@ -25,6 +25,7 @@ int main(int argc, char** argv) {
 	}
 	// upload dir
 	_mkdir("upload");
+	_chdir("upload");
 	// create socket
 	SOCKET serverSocket, clientSocket;
 	struct sockaddr_in serverAddress, clientAddress;
@@ -60,8 +61,16 @@ int main(int argc, char** argv) {
 		// receive
 		while ((bytesRead = recv(clientSocket, buf, MAX_SIZE, 0)) > 0) {
 			buf[bytesRead] = '\0';
-			if (!strncmp(buf, "put", strlen("put"))) {
-
+			int bufSize = strlen(buf);
+			if (bufSize >= 5 && buf[0] == 'p' && buf[1] == 'u' && buf[2] == 't') {
+				char filename[MAX_SIZE];
+				memcpy(filename, &buf[4], bufSize - 4);
+				FILE* fptr = fopen(filename, "wb");
+				do {
+					bytesRead = recv(serverSocket, buf, MAX_SIZE, 0);
+					fwrite(buf, MAX_SIZE, bytesRead, fptr);
+				} while (buf[bytesRead - 1] != '\0');
+				fclose(fptr);
 			} else if (!strncmp(buf, "get", strlen("get"))) {
 
 			} else if (!strncmp(buf, "dir", strlen("dir"))) {
@@ -101,7 +110,6 @@ int main(int argc, char** argv) {
 				strcat(info, tmp);
 				// TODO: >1024
 				send(clientSocket, info, strlen(info), 0);
-				// Get ACK
 				// recv(clientSocket, buf, MAX_SIZE, 0);
 			} else if (!strncmp(buf, "rename", strlen("rename"))) {
 
