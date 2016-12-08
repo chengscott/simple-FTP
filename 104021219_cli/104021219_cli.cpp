@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
 		if (bufSize >= 5 && buf[0] == 'p' && buf[1] == 'u' && buf[2] == 't') {
 			_chdir("upload");
 			char filename[MAX_SIZE];
-			memcpy(filename, &buf[4], bufSize - 3);
+			strcpy(filename, &buf[4], bufSize - 3);
 			FILE* fptr = fopen(filename, "rb");
 			if (fptr == NULL) printf("Invaild: %s is not found!", filename);
 			else {
@@ -66,8 +66,42 @@ int main(int argc, char** argv) {
 					}
 					else break;
 				}
-				printf("%s is sent.\n", filename);
+				printf("put %s success.\n", filename);
 			}
+			_chdir("..");
+		} else if (bufSize >= 5 && buf[0] == 'g' && buf[1] == 'e' && buf[2] == 't') {
+			_chdir("download");
+			int cancel = 0;
+			char filename[MAX_SIZE];
+			strcpy(filename, &buf[4], bufSize - 3);
+			FILE* fptr = fopen(filename, "rb");
+			if (fptr != NULL) {
+				printf("Overwrite current %s file? [Y/n]", filename);
+				char res;
+				scanf("%c", &res);
+				if (res == 'n') cancel = 1;
+			}
+			if (!cancel) {
+				send(serverSocket, buf, strlen(buf) + 1, 0);
+				bytesRead = recv(serverSocket, buf, MAX_SIZE, 0);
+				if (bytesRead == 3 && strcmp(buf, "WTF") == 0) {
+					cancel = 1;
+					printf("Invalid: %s file not found in server.\n", filename);
+				}
+			}
+			if (!cancel) {
+				fptr = fopen(filename, "wb");
+				while (1) {
+					memset(buf, 0, MAX_SIZE);
+					bytesRead = recv(serverSocket, buf, MAX_SIZE, 0);
+					if (bytesRead > 0) {
+						fwrite(buf, 1, bytesRead, fptr);
+					}
+					else break;
+				}
+				printf("get %s success.\n", filename);
+			}
+			fclose(fptr);
 			_chdir("..");
 		} else if (bufSize == 3 && buf[0] == 'd' && buf[1] == 'i' && buf[2] == 'r') {
 			send(serverSocket, "dir", 3, 0);

@@ -79,7 +79,24 @@ int main(int argc, char** argv) {
 			printf("[%s] put %s success.\n", inet_ntoa(clientAddress.sin_addr), filename);
 		}
 		else if (bytesRead >= 5 && buf[0] == 'g' && buf[1] == 'e' && buf[2] == 't') {
-
+			char filename[MAX_SIZE];
+			strcpy(filename, &buf[4]);
+			FILE* fptr = fopen(filename, "rb");
+			if (fptr == NULL) {
+				send(clientSocket, "WTF", 3, 0);
+			}
+			else {
+				send(clientSocket, "LGTM", 4, 0);
+				while (1) {
+					memset(buf, 0, MAX_SIZE);
+					bytesRead = fread(buf, 1, MAX_SIZE, fptr);
+					if (bytesRead > 0) {
+						send(clientSocket, buf, bytesRead, 0);
+					}
+					else break;
+				}
+				printf("[%s] get %s success.\n", inet_ntoa(clientAddress.sin_addr), filename);
+			}
 		}
 		else if (!strncmp(buf, "dir", strlen("dir"))) {
 			char info[100000] = " Directory of ./upload\n\n";
