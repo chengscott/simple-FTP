@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 		// validate command
 		int bufSize = strlen(buf);
 		if (bufSize >= MAX_SIZE) {
-			printf("Invalid: Command is too long.");
+			printf("Invalid: Command is too long.\n");
 			continue;
 		}
 		// connection
@@ -50,14 +50,39 @@ int main(int argc, char** argv) {
 		}
 		// command
 		if (bufSize >= 5 && buf[0] == 'p' && buf[1] == 'u' && buf[2] == 't') {
+			// put to ./upload
 			_chdir("upload");
+			int cancel = 0;
+			// parse filename
 			char filename[MAX_SIZE];
 			strcpy(filename, &buf[4], bufSize - 3);
 			int fileSize = 0;
+			// check if client has the file
 			FILE* fptr = fopen(filename, "rb");
-			if (fptr == NULL) printf("Invaild: %s is not found!", filename);
-			else {
+			if (fptr == NULL) {
+				printf("Invaild: %s is not found!\n", filename);
+				cancel = 1;
+			}
+			// check if server has the file(name)
+			if (!cancel) {
 				send(serverSocket, buf, strlen(buf) + 1, 0);
+				memset(buf, 0, MAX_SIZE);
+				bytesRead = recv(serverSocket, buf, MAX_SIZE, 0);
+				// [WTF]: server has the file(name)
+				if (bytesRead == 3 && strcmp(buf, "WTF") == 0) {
+					printf("Overwrite %s in server? [Y/n]", filename);
+					char res;
+					scanf("%c", &res);
+					// [G8]: cancel put file
+					if (res == 'n') {
+						send(serverSocket, "G8", 2, 0);
+						cancel = 1;
+					}
+				}
+			}
+			if (!cancel) {
+				// [OK]: put file
+				send(serverSocket, "OK", 2, 0);
 				while (1) {
 					memset(buf, 0, MAX_SIZE);
 					bufSize = fread(buf, 1, MAX_SIZE, fptr);
@@ -69,22 +94,30 @@ int main(int argc, char** argv) {
 				}
 				printf("put %s success (%d bytes).\n", filename, fileSize);
 			}
+			if (fptr != NULL) fclose(fptr);
 			_chdir("..");
 		} else if (bufSize >= 5 && buf[0] == 'g' && buf[1] == 'e' && buf[2] == 't') {
+			// get to ./download
 			_chdir("download");
 			int cancel = 0;
+			// parse filename
 			char filename[MAX_SIZE];
 			strcpy(filename, &buf[4], bufSize - 3);
+			// check if client has the file(name)
 			FILE* fptr = fopen(filename, "rb");
 			if (fptr != NULL) {
 				printf("Overwrite current %s file? [Y/n]", filename);
 				char res;
 				scanf("%c", &res);
 				if (res == 'n') cancel = 1;
+				fclose(fptr);
 			}
 			if (!cancel) {
+				// check if server has the file
 				send(serverSocket, buf, strlen(buf) + 1, 0);
+				memset(buf, 0, MAX_SIZE);
 				bytesRead = recv(serverSocket, buf, MAX_SIZE, 0);
+				// [WTF]: server does not have the file
 				if (bytesRead == 3 && strcmp(buf, "WTF") == 0) {
 					cancel = 1;
 					printf("Invalid: %s file not found in server.\n", filename);
@@ -103,11 +136,12 @@ int main(int argc, char** argv) {
 					else break;
 				}
 				printf("get %s success (%d bytes).\n", filename, fileSize);
+				fclose(fptr);
 			}
-			fclose(fptr);
 			_chdir("..");
 		} else if (bufSize == 3 && buf[0] == 'd' && buf[1] == 'i' && buf[2] == 'r') {
 			send(serverSocket, "dir", 3, 0);
+			// get temp file to ./GBY.txt
 			FILE* fptr;
 			fptr = fopen("GBY.txt", "wb");
 			while ((bytesRead = recv(serverSocket, buf, MAX_SIZE, 0)) > 0) {
@@ -115,10 +149,12 @@ int main(int argc, char** argv) {
 				memset(buf, 0, MAX_SIZE);
 			}
 			fclose(fptr);
+			// show dir result
 			fptr = fopen("GBY.txt", "r");
 			char c;
 			while ((c = getc(fptr)) != EOF) putchar(c);
 			fclose(fptr);
+			// remove temp file ./GBY.txt
 			system("del GBY.txt");
 		}
 		else if (
@@ -133,12 +169,10 @@ int main(int argc, char** argv) {
 			send(serverSocket, buf, bufSize, 0);
 			char GBY[MAX_SIZE];
 			bytesRead = recv(serverSocket, GBY, MAX_SIZE, 0);
+			// [G8]: success
 			if (bytesRead == 2 && GBY[0] == 'G' && GBY[1] == '8')
 				printf("%s success.\n", buf);
 			else printf("Invalid: %s.\n", buf);
-		}
-		else {
-			printf("Invalid: command");
 		}
 		closesocket(serverSocket);
 		memset(buf, 0, MAX_SIZE);
