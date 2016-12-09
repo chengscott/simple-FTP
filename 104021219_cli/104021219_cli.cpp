@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
 			_chdir("upload");
 			char filename[MAX_SIZE];
 			strcpy(filename, &buf[4], bufSize - 3);
+			int fileSize = 0;
 			FILE* fptr = fopen(filename, "rb");
 			if (fptr == NULL) printf("Invaild: %s is not found!", filename);
 			else {
@@ -62,11 +63,11 @@ int main(int argc, char** argv) {
 					bufSize = fread(buf, 1, MAX_SIZE, fptr);
 					if (bufSize > 0) {
 						send(serverSocket, buf, bufSize, 0);
-						printf("Send %d bytes.\n", bufSize);
+						fileSize += bufSize;
 					}
 					else break;
 				}
-				printf("put %s success.\n", filename);
+				printf("put %s success (%d bytes).\n", filename, fileSize);
 			}
 			_chdir("..");
 		} else if (bufSize >= 5 && buf[0] == 'g' && buf[1] == 'e' && buf[2] == 't') {
@@ -90,16 +91,18 @@ int main(int argc, char** argv) {
 				}
 			}
 			if (!cancel) {
+				int fileSize = 0;
 				fptr = fopen(filename, "wb");
 				while (1) {
 					memset(buf, 0, MAX_SIZE);
 					bytesRead = recv(serverSocket, buf, MAX_SIZE, 0);
 					if (bytesRead > 0) {
 						fwrite(buf, 1, bytesRead, fptr);
+						fileSize += bytesRead;
 					}
 					else break;
 				}
-				printf("get %s success.\n", filename);
+				printf("get %s success (%d bytes).\n", filename, fileSize);
 			}
 			fclose(fptr);
 			_chdir("..");

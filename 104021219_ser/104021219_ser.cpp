@@ -62,16 +62,23 @@ int main(int argc, char** argv) {
 			int fileLen = strlen(filename);
 			memmove(buf, buf + 5 + fileLen, bytesRead);
 			fwrite(buf, 1, bytesRead - 5 - fileLen, fptr);
+			int fileSize = 0;
 			while (1) {
 				memset(buf, 0, MAX_SIZE);
 				bytesRead = recv(clientSocket, buf, MAX_SIZE, 0);
 				if (bytesRead > 0) {
 					fwrite(buf, 1, bytesRead, fptr);
+					fileSize += bytesRead;
 				}
 				else break;
 			}
 			fclose(fptr);
-			printf("[%s] put %s success.\n", inet_ntoa(clientAddress.sin_addr), filename);
+			printf(
+				"[%s] put %s success (%d bytes).\n",
+				inet_ntoa(clientAddress.sin_addr),
+				filename,
+				fileSize
+			);
 		}
 		else if (bytesRead >= 5 && buf[0] == 'g' && buf[1] == 'e' && buf[2] == 't') {
 			char filename[MAX_SIZE];
@@ -82,15 +89,22 @@ int main(int argc, char** argv) {
 			}
 			else {
 				send(clientSocket, "LGTM", 4, 0);
+				int fileSize = 0;
 				while (1) {
 					memset(buf, 0, MAX_SIZE);
 					bytesRead = fread(buf, 1, MAX_SIZE, fptr);
 					if (bytesRead > 0) {
 						send(clientSocket, buf, bytesRead, 0);
+						fileSize += bytesRead;
 					}
 					else break;
 				}
-				printf("[%s] get %s success.\n", inet_ntoa(clientAddress.sin_addr), filename);
+				printf(
+					"[%s] get %s success (%d bytes).\n",
+					inet_ntoa(clientAddress.sin_addr),
+					filename,
+					fileSize
+				);
 			}
 		}
 		else if (bytesRead == 3 && buf[0] == 'd' && buf[1] == 'i' && buf[2] == 'r') {
