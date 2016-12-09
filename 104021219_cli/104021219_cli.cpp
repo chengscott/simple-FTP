@@ -151,8 +151,13 @@ int main(int argc, char** argv) {
 			fclose(fptr);
 			// show dir result
 			fptr = fopen("GBY.txt", "r");
+			printf(" Directory of server:./upload/\n");
+			int line = 0;
 			char c;
-			while ((c = getc(fptr)) != EOF) putchar(c);
+			while ((c = getc(fptr)) != EOF) {
+				line += (c == '\n');
+				if (line > 4) putchar(c);
+			}
 			fclose(fptr);
 			// remove temp file ./GBY.txt
 			system("del GBY.txt");
